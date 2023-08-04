@@ -3,9 +3,7 @@ QBCore = exports['qb-core']:GetCoreObject()
 isHandcuffed = false
 cuffType = 1
 isEscorted = false
-draggerId = 0
 PlayerJob = {}
-onDuty = false
 local DutyBlips = {}
 
 -- Functions
@@ -44,9 +42,7 @@ end
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     local player = QBCore.Functions.GetPlayerData()
     PlayerJob = player.job
-    onDuty = player.job.onduty
     isHandcuffed = false
-    TriggerServerEvent("QBCore:Server:SetMetaData", "ishandcuffed", false)
     TriggerServerEvent("sheriff:server:SetHandcuffStatus", false)
     TriggerServerEvent("sheriff:server:UpdateBlips")
     TriggerServerEvent("sheriff:server:UpdateCurrentCops")
@@ -75,7 +71,7 @@ AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
 
     if PlayerJob and PlayerJob.name ~= "sheriff" then
         if DutyBlips then
-            for k, v in pairs(DutyBlips) do
+            for _, v in pairs(DutyBlips) do
                 RemoveBlip(v)
             end
         end
@@ -89,35 +85,32 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     TriggerServerEvent("sheriff:server:UpdateCurrentCops")
     isHandcuffed = false
     isEscorted = false
-    onDuty = false
+    PlayerJob = {}
     ClearPedTasks(PlayerPedId())
     DetachEntity(PlayerPedId(), true, false)
     if DutyBlips then
-        for k, v in pairs(DutyBlips) do
+        for _, v in pairs(DutyBlips) do
             RemoveBlip(v)
         end
         DutyBlips = {}
     end
 end)
 
-RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
-    PlayerJob = JobInfo
-    TriggerServerEvent("sheriff:server:UpdateBlips")
-    if JobInfo.name == "sheriff" then
-        if PlayerJob.onduty then
-            TriggerServerEvent("QBCore:ToggleDuty")
-            onDuty = false
-        end
-    end
+RegisterNetEvent("QBCore:Client:SetDuty", function(newDuty)
+    PlayerJob.onduty = newDuty
+end)
 
-    if (PlayerJob ~= nil) and PlayerJob.name ~= "sheriff" then
+RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
+    if JobInfo.name ~= "sheriff" then
         if DutyBlips then
-            for k, v in pairs(DutyBlips) do
+            for _, v in pairs(DutyBlips) do
                 RemoveBlip(v)
             end
         end
         DutyBlips = {}
     end
+    PlayerJob = JobInfo
+    TriggerServerEvent("sheriff:server:UpdateBlips")
 end)
 
 RegisterNetEvent('sheriff:client:sendBillingMail', function(amount)
@@ -138,15 +131,15 @@ end)
 
 RegisterNetEvent('sheriff:client:UpdateBlips', function(players)
     if PlayerJob and (PlayerJob.name == 'sheriff' or PlayerJob.name == 'ambulance') and
-        onDuty then
+        PlayerJob.onduty then
         if DutyBlips then
-            for k, v in pairs(DutyBlips) do
+            for _, v in pairs(DutyBlips) do
                 RemoveBlip(v)
             end
         end
         DutyBlips = {}
         if players then
-            for k, data in pairs(players) do
+            for _, data in pairs(players) do
                 local id = GetPlayerFromServerId(data.source)
                 CreateDutyBlips(id, data.label, data.job, data.location)
 
@@ -155,7 +148,7 @@ RegisterNetEvent('sheriff:client:UpdateBlips', function(players)
     end
 end)
 
-RegisterNetEvent('sheriff:client:policeAlert', function(coords, text)
+RegisterNetEvent('sheriff:client:sheriffAlert', function(coords, text)
     local street1, street2 = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
     local street1name = GetStreetNameFromHashKey(street1)
     local street2name = GetStreetNameFromHashKey(street2)
@@ -202,9 +195,15 @@ RegisterNetEvent('sheriff:client:SendToJail', function(time)
     TriggerEvent("prison:client:Enter", time)
 end)
 
+RegisterNetEvent('sheriff:client:SendSheriffEmergencyAlert', function()
+    local Player = QBCore.Functions.GetPlayerData()
+    TriggerServerEvent('sheriff:server:sheriffAlert', Lang:t('info.officer_down', {lastname = Player.charinfo.lastname, callsign = Player.metadata.callsign}))
+    TriggerServerEvent('hospital:server:ambulanceAlert', Lang:t('info.officer_down', {lastname = Player.charinfo.lastname, callsign = Player.metadata.callsign}))
+end)
+
 -- Threads
 CreateThread(function()
-    for k, station in pairs(Config.Locations["stations"]) do
+    for _, station in pairs(Config.Locations["stations"]) do
         local blip = AddBlipForCoord(station.coords.x, station.coords.y, station.coords.z)
         SetBlipSprite(blip, 60)
         SetBlipAsShortRange(blip, true)
