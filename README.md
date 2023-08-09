@@ -157,8 +157,14 @@ DE
             },
         },
 	},
+
+
 ```
 # qb-bossmenu/config.lua
 ```
     ['sheriff'] = vector3(-433.28, 6006.27, 37.0),
 ```
+
+# Sorun olursa eğer / If Any Problem:
+
+[Discord Kanalım](https://discord.gg/46fa6GF9uF)
